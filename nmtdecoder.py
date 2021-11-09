@@ -28,11 +28,15 @@ class EnglishTestSet(Dataset):
     def __init__(self, test_file, vocab_file):
         if test_file[-3:] == 'xml':
             os.system(f"python3 extract.py {test_file}")
-        os.system(f'subword-nmt apply-bpe -c ../hw2/codes_file --vocabulary ../hw2/vocab_file.L1 < {test_file} > {test_file}.BPE')
-        
-        # training and validation file and length
-        engl_test = open(os.path.join(os.path.dirname(__file__), f'{test_file}.BPE'), 'r')
-        engl_test_num_lines = sum(1 for line in open(f'{test_file}.BPE', 'r'))
+            test_file = test_file[:-4]
+            os.system(f'subword-nmt apply-bpe -c ../hw2/codes_file --vocabulary ../hw2/vocab_file.L1 < {test_file} > {test_file}.en.BPE')
+            engl_test = open(os.path.join(os.path.dirname(__file__), f'{test_file}.en.BPE'), 'r')
+            engl_test_num_lines = sum(1 for line in open(f'{test_file}.en.BPE', 'r'))
+        else:
+            os.system(f'subword-nmt apply-bpe -c ../hw2/codes_file --vocabulary ../hw2/vocab_file.L1 < {test_file} > {test_file}.BPE')
+            # training and validation file and length
+            engl_test = open(os.path.join(os.path.dirname(__file__), f'{test_file}.BPE'), 'r')
+            engl_test_num_lines = sum(1 for line in open(f'{test_file}.BPE', 'r'))
 
         # vocab
         eng_bpe = open(vocab_file, 'r')
@@ -112,7 +116,7 @@ def beamSearch(sentence, k, model):
                     if new_seqs.queue[0][0] < score:
                         new_seqs.get()  # pop the one with lowest score
                         new_seqs.put((score, list(candidate)))
-                new_seqs.put((score, list(candidate)))        
+
             else: #otherwise decoder next token
                 candidates = torch.from_numpy(
                     np.array([[candidate[-1]]], dtype=int))
@@ -186,7 +190,7 @@ if __name__ == "__main__":
     k_val = int(args.k)
 
     test_data = EnglishTestSet(test_file, en_dictionary)
-    test_dataloader = test_data.getX()[:10]
+    test_dataloader = test_data.getX()
 
     checkpoint = torch.load(model_path, map_location=Config.DEVICE)
     model = TransformerLSTM(
