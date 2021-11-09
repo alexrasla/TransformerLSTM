@@ -186,7 +186,7 @@ if __name__ == "__main__":
     k_val = int(args.k)
 
     test_data = EnglishTestSet(test_file, en_dictionary)
-    test_dataloader = test_data.getX()[:500]
+    test_dataloader = test_data.getX()
 
     checkpoint = torch.load(model_path, map_location=Config.DEVICE)
     model = TransformerLSTM(
@@ -232,13 +232,23 @@ if __name__ == "__main__":
     # different evaluations
     if evaluation == 'BLEU':
         bleu = metrics.BLEU()
-        # print(translations, '\n')
-        # print(references, '\n')
+
         res = bleu.corpus_score(translations, [references])
         print(f"K value: {k_val}", res, '\n')
     elif evaluation == 'CHRF':
-        chrf = metrics.CHRF()
-        # res = chrf.
+        with open('ref.txt', 'w') as ref:
+            with open('cand.txt', 'w') as cand:
+                for item in references:
+                    ref.write(item)
+                for item in translations:
+                    cand.write(item)
+        os.system(f'sacrebleu ref.txt -i cand.txt -m chrf')
     elif evaluation == 'TER':
-        ter = metrics.TERScore()
+        with open('ref.txt', 'w') as ref:
+            with open('cand.txt', 'w') as cand:
+                for item in references:
+                    ref.write(item)
+                for item in translations:
+                    cand.write(item)
+        os.system(f'sacrebleu ref.txt -i cand.txt -m ter')
         
