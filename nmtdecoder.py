@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(description='BPE tokenization.')
 parser.add_argument('-i')
 parser.add_argument('-en_dict')
 parser.add_argument('-ha_dict')
-parser.add_argument('-eval', default='BLEU')
+parser.add_argument('-eval', default='text')
 parser.add_argument('-model')
 parser.add_argument('-k')
 args = parser.parse_args()
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     k_val = int(args.k)
 
     test_data = EnglishTestSet(test_file, en_dictionary)
-    test_dataloader = test_data.getX()
+    test_dataloader = test_data.getX()[:10]
 
     checkpoint = torch.load(model_path, map_location=Config.DEVICE)
     model = TransformerLSTM(
@@ -251,4 +251,8 @@ if __name__ == "__main__":
                 for item in translations:
                     cand.write(item)
         os.system(f'sacrebleu ref.txt -i cand.txt -m ter')
+    elif evaluation == 'text':
+        with open('model_output.txt', 'w') as output:
+            for item in translations:
+                output.write(item + '\n')
         
