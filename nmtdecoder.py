@@ -11,6 +11,9 @@ from hybridnmt import TransformerLSTM, Config, Decoder
 import math
 import sys
 import sacrebleu.metrics as metrics
+import sacrebleu
+from subword_nmt.apply_bpe import BPE
+from subword_nmt.get_vocab import get_vocab
 
 sys.path.append(Config.PATH)
 sys.path.append('/Users/alexrasla/Documents/cs291k/hw2')
@@ -19,24 +22,37 @@ parser = argparse.ArgumentParser(description='BPE tokenization.')
 parser.add_argument('-i')
 parser.add_argument('-en_dict')
 parser.add_argument('-ha_dict')
+parser.add_argument('-codes')
 parser.add_argument('-eval', default='text')
 parser.add_argument('-model')
 parser.add_argument('-k')
 args = parser.parse_args()
 
 class EnglishTestSet(Dataset):
-    def __init__(self, test_file, vocab_file):
+    def __init__(self, test_file, vocab_file, codes_file):
+        
+        #apply bpe tokenization given code file
         if test_file[-3:] == 'xml':
             os.system(f"python3 extract.py {test_file}")
             test_file = test_file[:-4]
-            os.system(f'subword-nmt apply-bpe -c ../hw2/codes_file --vocabulary ../hw2/vocab_file.L1 < {test_file} > {test_file}.en.BPE')
-            engl_test = open(os.path.join(os.path.dirname(__file__), f'{test_file}.en.BPE'), 'r')
-            engl_test_num_lines = sum(1 for line in open(f'{test_file}.en.BPE', 'r'))
+            bpe_tokenized = open(f'{test_file}.en.BPE', "w")
+            codes_file = open(codes_file, "r")
+            test_file = open(f'{test_file}.en', 'r')
+            bpe = BPE(codes_file)
+            for line in test_file:
+                bpe_tokenized.writelines(bpe.process_line(line))
+            engl_test = open(f'{test_file.name}.BPE', 'r')
+            engl_test_num_lines = sum(1 for line in open(f'{test_file.name}.BPE', 'r'))
+            
         else:
-            os.system(f'subword-nmt apply-bpe -c ../hw2/codes_file --vocabulary ../hw2/vocab_file.L1 < {test_file} > {test_file}.BPE')
-            # training and validation file and length
-            engl_test = open(os.path.join(os.path.dirname(__file__), f'{test_file}.BPE'), 'r')
-            engl_test_num_lines = sum(1 for line in open(f'{test_file}.BPE', 'r'))
+            bpe_tokenized = open(f'{test_file}.BPE', "w")
+            codes_file = open(codes_file, "r")
+            test_file = open(f'{test_file}', 'r')
+            bpe = BPE(codes_file)
+            for line in test_file:
+                bpe_tokenized.writelines(bpe.process_line(line))
+            engl_test = open(f'{test_file.name}.BPE', 'r')
+            engl_test_num_lines = sum(1 for line in open(f'{test_file.name}.BPE', 'r'))
 
         # vocab
         eng_bpe = open(vocab_file, 'r')
@@ -187,9 +203,10 @@ if __name__ == "__main__":
     ha_dictionary = args.ha_dict
     evaluation = args.eval
     model_path = args.model
+    codes = args.codes
     k_val = int(args.k)
 
-    test_data = EnglishTestSet(test_file, en_dictionary)
+    test_data = EnglishTestSet(test_file, en_dictionary, codes)
     test_dataloader = test_data.getX()
 
     checkpoint = torch.load(model_path, map_location=Config.DEVICE)
