@@ -22,6 +22,7 @@ parser = argparse.ArgumentParser(description='BPE tokenization.')
 parser.add_argument('-i')
 parser.add_argument('-en_dict')
 parser.add_argument('-ha_dict')
+parser.add_argument('-ref')
 parser.add_argument('-codes')
 parser.add_argument('-eval', default='text')
 parser.add_argument('-model')
@@ -203,12 +204,14 @@ if __name__ == "__main__":
     ha_dictionary = args.ha_dict
     evaluation = args.eval
     model_path = args.model
+    ref = args.ref
     codes = args.codes
     k_val = int(args.k)
 
     test_data = EnglishTestSet(test_file, en_dictionary, codes)
-    test_dataloader = test_data.getX()
-
+    
+    test_dataloader = test_data.getX()[:10]
+    
     checkpoint = torch.load(model_path, map_location=Config.DEVICE)
     model = TransformerLSTM(
         Config.EMBEDDING_SIZE,
@@ -225,35 +228,32 @@ if __name__ == "__main__":
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
     
+    
+    
     #do beam search each each input
     translations = []
-    references = []
+    
     bleu_score = 0
+    
+    if evaluation != 'text':
+        ref_data = EnglishTestSet(ref, ha_dictionary, codes)
+        references = []
+        for reference in ref_data.getX():
+            reference = convertToText(reference, ha_dictionary)
+            references.append(" ".join(reference))
+
     with torch.no_grad():
         for index in range(len(test_dataloader)):
             best_score = beamSearch(test_dataloader[index], k_val, model)
-            translation = convertToText(best_score, ha_dictionary)
-            reference = convertToText(test_data.__getitem__(index), ha_dictionary)
-            
+            translation = convertToText(best_score, ha_dictionary)            
             translations.append(" ".join(translation[1:]))
-            references.append(" ".join(reference))
-            
-            # print('trans', " ".join(translation))
-            # print('ref', " ".join(reference))
-            # # print('\n')
-            # bleu = metrics.BLEU()
-            # res = bleu.sentence_score(" ".join(translation[1:]), [" ".join(reference)])
-            # bleu_score += res.score
-            # print('BLEU: ', res.score, '\n')
+
             if index % 10 == 0:
                 print(f'[Testing] at {index}')
 
-    # print(translations)
-    # print(bleu_score/len(test_dataloader))
     # different evaluations
     if evaluation == 'BLEU':
         bleu = metrics.BLEU()
-
         res = bleu.corpus_score(translations, [references])
         print(f"K value: {k_val}", res, '\n')
     elif evaluation == 'CHRF':
